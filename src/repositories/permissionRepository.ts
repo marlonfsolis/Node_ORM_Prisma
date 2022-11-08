@@ -6,14 +6,17 @@ import {Err} from "../shared/Err";
 import {IOutputResult} from "../shared/SqlResult";
 import db from "../shared/Database";
 
+import {PrismaClient} from "@prisma/client";
 
 
 export default class PermissionRepository
 {
     private readonly pool:Pool;
+    private readonly prisma: PrismaClient;
 
     constructor(pool:Pool) {
         this.pool = pool;
+        this.prisma = new PrismaClient();
     }
 
     /**
@@ -21,18 +24,7 @@ export default class PermissionRepository
      */
     async getPermissions(): Promise<IResult<IPermission[]>> {
         let permissions = [] as IPermission[];
-
-        const inValues = [0,0,null,null];
-        const r = await db.call("sp_permissions_readlist",inValues,["@result"], this.pool);
-        const callResult = r.getOutputVal<IOutputResult>("@result");
-
-        if (!callResult.success) {
-            return new ResultError<IPermission[]>(
-                new Err(callResult.msg, "sp_permissions_readlist", callResult.errorLogId.toString())
-            );
-        }
-
-        permissions = r.getData<IPermission>(0);
+        permissions = await this.prisma.permission.findMany() as IPermission[];
         return new ResultOk<IPermission[]>(permissions);
     }
 
@@ -40,17 +32,17 @@ export default class PermissionRepository
     async createPermission(p:IPermission): Promise<IResult<IPermission>> {
         let permission: IPermission|undefined;
 
-        const inValues = [JSON.stringify(p)];
-        const r = await db.call("sp_permissions_create", inValues,["@result"], this.pool);
-        const callResult  = r.getOutputVal<IOutputResult>("@result");
-
-        if (!callResult.success) {
+        const pFound = await this.prisma.permission.findUnique({where:{name:p.name}});
+        if (pFound) {
             return new ResultError(
-                new Err(callResult.msg, "sp_permissions_create", callResult.errorLogId.toString())
-            )
+                new Err(`Error - 400|Permission name in use.`, "repo.createPermission", `0`)
+            );
         }
 
-        permission = r.getData<IPermission>(0)[0];
+        permission = await this.prisma.permission.create({
+           data: p
+        }) as IPermission;
+
         return new ResultOk(permission);
     }
 
@@ -58,53 +50,53 @@ export default class PermissionRepository
     async deletePermission(pName:string): Promise<IResult<IPermission>> {
         let permission: IPermission|undefined;
 
-        const inValues = [pName];
-        const r = await db.call("sp_permissions_delete", inValues,["@result"], this.pool);
-        const callResult  = r.getOutputVal<IOutputResult>("@result");
-
-        if (!callResult.success) {
+        const pFound = await this.prisma.permission.findUnique({where:{name:pName}});
+        if (!pFound) {
             return new ResultError(
-                new Err(callResult.msg, "sp_permissions_delete", callResult.errorLogId.toString())
-            )
+                new Err(`Error - 404|Permission not found.`, "repo.deletePermission", `0`)
+            );
         }
 
-        permission = r.getData<IPermission>(0)[0];
+        permission = await this.prisma.permission.delete({where:{name:pName}}) as IPermission;
         return new ResultOk(permission);
     }
 
     /** Get a permission */
     async getPermission(pName:string): Promise<IResult<IPermission>> {
-        let permission: IPermission|undefined;
-
-        const inValues = [pName];
-        const r = await db.call("sp_permissions_read", inValues,["@result"], this.pool);
-        const callResult  = r.getOutputVal<IOutputResult>("@result");
-
-        if (!callResult.success) {
+        const pFound = await this.prisma.permission.findUnique({where:{name:pName}});
+        if (!pFound) {
             return new ResultError(
-                new Err(callResult.msg, "sp_permissions_read", callResult.errorLogId.toString())
-            )
+                new Err(`Error - 404|Permission not found.`, "repo.getPermission", `0`)
+            );
         }
-
-        permission = r.getData<IPermission>(0)[0];
-        return new ResultOk(permission);
+        return new ResultOk(pFound as IPermission);
     }
 
     /** Update a permission */
     async updatePermission(pName:string, p:IPermission): Promise<IResult<IPermission>> {
         let permission: IPermission|undefined;
 
-        const inValues = [pName, JSON.stringify(p)];
-        const r = await db.call("sp_permissions_update", inValues,["@result"], this.pool);
-        const callResult  = r.getOutputVal<IOutputResult>("@result");
-
-        if (!callResult.success) {
+        let pFound = await this.prisma.permission.findUnique({where:{name:pName}});
+        if (!pFound) {
             return new ResultError(
-                new Err(callResult.msg, "sp_permissions_update", callResult.errorLogId.toString())
-            )
+                new Err(`Error - 404|Permission not found.`, "repo.updatePermission", `0`)
+            );
         }
 
-        permission = r.getData<IPermission>(0)[0];
+        if (pName !== p.name) {
+            pFound = await this.prisma.permission.findUnique({where:{name:p.name}});
+            if (pFound) {
+                return new ResultError(
+                    new Err(`Error - 400|Permission name in use.`, "repo.updatePermission", `0`)
+                );
+            }
+        }
+
+        permission = await this.prisma.permission.update({
+            where:{name:pName},
+            data: p
+        }) as IPermission;
+
         return new ResultOk(permission);
     }
 }

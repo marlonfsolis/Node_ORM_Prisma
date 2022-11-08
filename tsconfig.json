@@ -26,6 +26,7 @@
       "node_modules/@types"
     ],
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["esnext"]
   }
 }

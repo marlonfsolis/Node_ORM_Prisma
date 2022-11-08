@@ -59,7 +59,7 @@ export const deletePermission = async (req: Request, res: Response) => {
         return new HttpResponseInternalServerError(res,[result.err!]);
     }
 
-    return new HttpResponseCreated(res, result.data);
+    return new HttpResponseOk(res, result.data);
 };
 
 
@@ -76,7 +76,7 @@ export const getPermission = async (req: Request, res: Response) => {
         return new HttpResponseInternalServerError(res,[result.err!]);
     }
 
-    return new HttpResponseCreated(res, result.data);
+    return new HttpResponseOk(res, result.data);
 };
 
 
