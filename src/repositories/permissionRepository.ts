@@ -1,12 +1,12 @@
-import {Pool} from "mysql2/promise";
+import {PrismaClient} from "@prisma/client";
 
+import {Pool} from "mysql2/promise";
 import {IPermission} from "../models/Permission";
 import {IResult, ResultOk, ResultError} from "../shared/Result";
 import {Err} from "../shared/Err";
 import {IOutputResult} from "../shared/SqlResult";
-import db from "../shared/Database";
 
-import {PrismaClient} from "@prisma/client";
+import db from "../shared/Database";
 
 
 export default class PermissionRepository
